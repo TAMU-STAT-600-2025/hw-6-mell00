@@ -64,6 +64,20 @@ std_xy <- function(X, Y) {
   cat("TEST PASSED: ", test_name, "\n")
 }
 
+{
+  test_name <- "lasso_c matches lasso (0 beta, lambda = 0.05)"
+  n <- 60; p <- 15
+  X <- matrix(rnorm(n * p), n, p); Y <- rnorm(n)
+  s <- std_xy(X, Y); Xs <- s$X; Ys <- s$Y
+  beta0 <- rep(0, p); lam <- 0.05
+  r_val <- lasso(Xs, Ys, beta0, lam)
+  c_val <- lasso_c(Xs, Ys, beta0, lam)
+  if (!isTRUE(all.equal(r_val, c_val, tolerance = 1e-10)))
+    stop(test_name, " (mismatch)")
+  n_ok <- n_ok + 1L
+  cat("TEST PASSED: ", test_name, "\n")
+}
+
 # Do at least 2 tests for fitLASSOstandardized function below. You are checking output agreements on at least 2 separate inputs
 #################################################
 
