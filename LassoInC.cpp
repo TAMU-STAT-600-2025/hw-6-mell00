@@ -30,6 +30,7 @@ double lasso_c(const arma::mat& Xtilde, const arma::colvec& Ytilde, const arma::
   return data_fit + lambda * l1;
 }
 
+// helper function, one or multi-lambda CD with soft_c updates
 static void cd_solve_precomp_c(const arma::mat& Xtilde, arma::colvec& r, arma::colvec& beta, const arma::rowvec& z,
                                const std::vector<const double*>& colptrs, const std::vector<arma::uword>& active,
                                const double lambda, const double eps)
@@ -67,7 +68,7 @@ static void cd_solve_precomp_c(const arma::mat& Xtilde, arma::colvec& r, arma::c
       // soft-threshold update
       const double bj_new = soft_c(rho, lambda) / zj;
     
-      // L1 update, r -= xj * bj_new, store
+      // L1 update, r -= xj * bj_new
       l1 += std::abs(bj_new) - std::abs(bj_old);
       if (bj_new != 0.0) axpy_inplace(-bj_new, xj, rptr, n);
       beta[j] = bj_new;
@@ -84,20 +85,21 @@ static void cd_solve_precomp_c(const arma::mat& Xtilde, arma::colvec& r, arma::c
 
 // Lasso coordinate-descent on standardized data with one lamdba. Returns a vector beta.
 // [[Rcpp::export]]
-arma::colvec fitLASSOstandardized_c(const arma::mat& Xtilde, const arma::colvec& Ytilde, double lambda, const arma::colvec& beta_start, double eps = 0.001){
+arma::colvec fitLASSOstandardized_c(const arma::mat& Xtilde, const arma::colvec& Ytilde, double lambda, 
+                                    const arma::colvec& beta_start, double eps = 0.001){
   const arma::uword p = Xtilde.n_cols;
   const arma::uword n = Xtilde.n_rows;
   const double invn = 1.0 / static_cast<double>(n);
   
   arma::colvec beta = beta_start;
-  arma::colvec r = Ytilde - Xtilde * beta;          // safe even if beta=0
+  arma::colvec r = Ytilde - Xtilde * beta; // safe even if beta = 0
   arma::rowvec z = arma::sum(arma::square(Xtilde), 0) * invn;
 
   // cache column pointers
   std::vector<const double*> colptrs(p);
   for (arma::uword j = 0; j < p; ++j) colptrs[j] = Xtilde.colptr(j);
 
-  // active = all features for single-λ
+  // active = all features for single-lambda
   std::vector<arma::uword> active(p);
   for (arma::uword j = 0; j < p; ++j) active[j] = j;
 
@@ -175,7 +177,7 @@ arma::mat fitLASSOstandardized_seq_c(const arma::mat& Xtilde, const arma::colvec
     // cache gradient for next strong set
     g_prev = (Xtilde.t() * r) * invn;
   
-    beta_mat.col(k) = beta; // store β(λ_k); residual already up-to-date
+    beta_mat.col(k) = beta; // store beta(lambda_k); residual already updated
   }
 
   return beta_mat;
