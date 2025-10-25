@@ -81,6 +81,20 @@ std_xy <- function(X, Y) {
 # Do at least 2 tests for fitLASSOstandardized function below. You are checking output agreements on at least 2 separate inputs
 #################################################
 
+{
+  test_name <- "fitLASSOstandardized_c matches fitLASSOstandardized (zero start)"
+  n <- 80; p <- 25
+  X <- matrix(rnorm(n * p), n, p); Y <- rnorm(n)
+  s <- std_xy(X, Y); Xs <- s$X; Ys <- s$Y
+  lam <- 0.3; beta0 <- rep(0, p)
+  r_beta <- fitLASSOstandardized(Xs, Ys, lam, beta0, eps = 1e-7)$beta
+  c_beta <- fitLASSOstandardized_c(Xs, Ys, lam, beta0, eps = 1e-7)
+  if (!isTRUE(all.equal(as.numeric(r_beta), as.numeric(c_beta), tolerance = 1e-6)))
+    stop(test_name, " (mismatch)")
+  n_ok <- n_ok + 1L
+  cat("TEST PASSED: ", test_name, "\n")
+}
+
 # Do microbenchmark on fitLASSOstandardized vs fitLASSOstandardized_c
 ######################################################################
 
