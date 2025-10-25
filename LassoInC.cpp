@@ -115,16 +115,21 @@ arma::mat fitLASSOstandardized_seq_c(const arma::mat& Xtilde, const arma::colvec
 {
   const arma::uword p = Xtilde.n_cols;
   const arma::uword L = lambda_seq.n_elem;
-  const double n = static_cast<double>(Xtilde.n_rows);
+  const arma::uword n = Xtilde.n_rows;
+  const double invn = 1.0 / static_cast<double>(n);
   const double kkt_tol = 1e-7;
-
-  arma::mat  beta_mat(p, L); // p x |lambda_seq|
+  
+  arma::mat  beta_mat(p, L);
   arma::colvec beta(p, arma::fill::zeros); // warm start
   arma::colvec r = Ytilde; // residual at beta = 0
-  arma::rowvec z = arma::sum(arma::square(Xtilde), 0) / n;
+  arma::rowvec z = arma::sum(arma::square(Xtilde), 0) * invn;
 
-  // gradient at current solution (g = (1/n) X^T r)
-  arma::colvec g_prev = (Xtilde.t() * r) / n;
+  // cache column pointers
+  std::vector<const double*> colptrs(p);
+  for (arma::uword j = 0; j < p; ++j) colptrs[j] = Xtilde.colptr(j);
+
+  // gradient at current solution (g = (1/n) X^T r) for strong rules
+  arma::colvec g_prev = (Xtilde.t() * r) * invn;
 
   std::vector<unsigned char> in_active(p, 0);
   std::vector<arma::uword>   active;
@@ -133,7 +138,7 @@ arma::mat fitLASSOstandardized_seq_c(const arma::mat& Xtilde, const arma::colvec
   for (arma::uword k = 0; k < L; ++k) {
     const double lambda    = lambda_seq[k];
     const double lambda_pr = (k == 0 ? lambda : lambda_seq[k - 1]);
-    const double strong_thr = std::max(2.0 * lambda - lambda_pr, 0.0); // strong rule
+    const double strong_thr = std::max(2.0 * lambda - lambda_pr, 0.0);
   
     // strong set with previous support
     active.clear();
@@ -144,33 +149,33 @@ arma::mat fitLASSOstandardized_seq_c(const arma::mat& Xtilde, const arma::colvec
         active.push_back(j);
       }
     }
+  
+    // solve on current active set
+    cd_solve_precomp_c(Xtilde, r, beta, z, colptrs, active, lambda, eps);
     
-    // solve on active set
-    cd_solve_precomp_c(Xtilde, r, beta, z, active, lambda, eps);
-    
-    // KKT check on complement; pull violators and re-solve if needed
+    // KKT sweep on complement
     while (true) {
-      arma::colvec g = (Xtilde.t() * r) / n; // gradient at current beta
       bool any_violation = false;
-
+    
       for (arma::uword j = 0; j < p; ++j) {
         if (in_active[j]) continue;
-        if (std::abs(g[j]) > lambda + kkt_tol) {
+        const double* xj = colptrs[j];
+        const double gj = dot_raw(xj, r.memptr(), n) * invn;
+        if (std::abs(gj) > lambda + kkt_tol) {
           in_active[j] = 1;
           active.push_back(j);
           any_violation = true;
         }
       }
     
-      if (!any_violation) {
-        g_prev = std::move(g); // cache for next lambda
-        break;
-      }
-      cd_solve_precomp_c(Xtilde, r, beta, z, active, lambda, eps);
+      if (!any_violation) break;
+      cd_solve_precomp_c(Xtilde, r, beta, z, colptrs, active, lambda, eps);
     }
+    
+    // cache gradient for next strong set
+    g_prev = (Xtilde.t() * r) * invn;
   
-    beta_mat.col(k) = beta; // store solution at this lambda
-    // r already corresponds to current beta; reused for next step
+    beta_mat.col(k) = beta; // store β(λ_k); residual already up-to-date
   }
 
   return beta_mat;
