@@ -75,15 +75,19 @@ arma::colvec fitLASSOstandardized_c(const arma::mat& Xtilde, const arma::colvec&
 
 // helper function analog to .cd_solve_precomp (from LassoFunctions.R)
 static void cd_solve_precomp_c(const arma::mat& Xtilde, arma::colvec& r, arma::colvec& beta, const arma::rowvec& z,
-                               const std::vector<arma::uword>& active, const double lambda, const double eps){
-  
+                               const std::vector<arma::uword>& active, const double lambda, const double eps)
+{
   if (active.empty()) return;
 
   const int max_iter = 100000;
   const double n = static_cast<double>(Xtilde.n_rows);
 
+  // Track L1 term for objective; sync with beta updates
+  double l1 = arma::sum(arma::abs(beta));
+
   for (int it = 0; it < max_iter; ++it) {
-    double max_change = 0.0;
+    // f_prev = (1/(2n)) * ||r||^2 + lambda * ||beta||_1
+    double f_prev = 0.5 * arma::dot(r, r) / n + lambda * l1;
   
     for (arma::uword t = 0; t < active.size(); ++t) {
       const arma::uword j = active[t];
@@ -102,15 +106,16 @@ static void cd_solve_precomp_c(const arma::mat& Xtilde, arma::colvec& r, arma::c
       // soft-threshold update
       const double bj_new = soft_c(rho, lambda) / zj;
     
+      // update L1 incrementally
+      l1 += std::abs(bj_new) - std::abs(bj_old);
+    
       // remove new contribution and store
       r -= xj * bj_new;
       beta[j] = bj_new;
-    
-      const double d = std::abs(bj_new - bj_old);
-      if (d > max_change) max_change = d;
     }
-    
-    if (max_change < eps) break;
+  
+    double f_curr = 0.5 * arma::dot(r, r) / n + lambda * l1;
+    if (std::abs(f_prev - f_curr) < eps) break;  // match R's stopping rule
   }
 }
 
