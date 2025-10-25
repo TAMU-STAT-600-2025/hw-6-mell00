@@ -132,6 +132,27 @@ cat("\n microbenchmark: fitLASSOstandardized vs fitLASSOstandardized_c \n")
 # Do at least 2 tests for fitLASSOstandardized_seq function below. You are checking output agreements on at least 2 separate inputs
 #################################################
 
+{
+  test_name <- "fitLASSOstandardized_seq_c matches fitLASSOstandardized_seq (25 lambdas)"
+  n <- 100; p <- 30
+  X <- matrix(rnorm(n * p), n, p); Y <- rnorm(n)
+  s <- std_xy(X, Y); Xs <- s$X; Ys <- s$Y
+  n_cur <- nrow(Xs)
+  lam_max <- max(abs(drop(crossprod(Xs, Ys))) / n_cur)
+  lam_seq <- seq(lam_max, lam_max * 0.1, length.out = 25)
+  
+  r_fit <- fitLASSOstandardized_seq(Xs, Ys, lambda_seq = lam_seq,
+                                    n_lambda = length(lam_seq), eps = 1e-7)
+  r_mat <- r_fit$beta_mat
+  c_mat <- fitLASSOstandardized_seq_c(Xs, Ys, lam_seq, eps = 1e-7)
+  
+  if (!identical(dim(r_mat), dim(c_mat))) stop(test_name, " (dim mismatch)")
+  if (!isTRUE(all.equal(as.numeric(r_mat), as.numeric(c_mat), tolerance = 1e-6)))
+    stop(test_name, " (values mismatch)")
+  n_ok <- n_ok + 1L
+  cat("TEST PASSED: ", test_name, "\n")
+}
+
 # Do microbenchmark on fitLASSOstandardized_seq vs fitLASSOstandardized_seq_c
 ######################################################################
 
