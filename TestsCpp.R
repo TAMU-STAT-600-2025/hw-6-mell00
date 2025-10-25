@@ -178,6 +178,25 @@ cat("\n microbenchmark: fitLASSOstandardized vs fitLASSOstandardized_c \n")
 # Do microbenchmark on fitLASSOstandardized_seq vs fitLASSOstandardized_seq_c
 ######################################################################
 
+cat("\n microbenchmark: fitLASSOstandardized_seq vs fitLASSOstandardized_seq_c \n")
+{
+  n <- 220; p <- 60
+  X <- matrix(rnorm(n * p), n, p); Y <- rnorm(n)
+  s <- std_xy(X, Y); Xs <- s$X; Ys <- s$Y
+  n_cur <- nrow(Xs)
+  lam_max <- max(abs(drop(crossprod(Xs, Ys))) / n_cur)
+  lam_seq <- seq(lam_max, lam_max * 0.05, length.out = 30)
+  
+  print(
+    microbenchmark(
+      R_path = fitLASSOstandardized_seq(Xs, Ys, lambda_seq = lam_seq,
+                                        n_lambda = length(lam_seq), eps = 1e-6)$beta_mat,
+      C_path = fitLASSOstandardized_seq_c(Xs, Ys, lam_seq, eps = 1e-6),
+      times = 10
+    )
+  )
+}
+
 # Tests on riboflavin data
 ##########################
 require(hdi) # this should install hdi package if you don't have it already; otherwise library(hdi)
