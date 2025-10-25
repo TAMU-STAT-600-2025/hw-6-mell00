@@ -70,7 +70,7 @@ static arma::colvec cd_one_lambda_scaled(const arma::mat& X, const arma::colvec&
 // Lasso coordinate-descent on standardized data with one lamdba. Returns a vector beta.
 // [[Rcpp::export]]
 arma::colvec fitLASSOstandardized_c(const arma::mat& Xtilde, const arma::colvec& Ytilde, double lambda, const arma::colvec& beta_start, double eps = 0.001){
-  // Your function code goes here
+  return cd_one_lambda_scaled(Xtilde, Ytilde, lambda, beta_start, eps);
 }  
 
 // Lasso coordinate-descent on standardized data with supplied lambda_seq. 
