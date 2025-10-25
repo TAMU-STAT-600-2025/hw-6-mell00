@@ -2,6 +2,16 @@
 // [[Rcpp::depends(RcppArmadillo)]]
 using namespace Rcpp;
 
+inline void axpy_inplace(double a, const double* x, double* y, arma::uword n) {
+  for (arma::uword i = 0; i < n; ++i) y[i] += a * x[i];
+}
+
+inline double dot_raw(const double* x, const double* y, arma::uword n) {
+  double s = 0.0;
+  for (arma::uword i = 0; i < n; ++i) s += x[i] * y[i];
+  return s;
+}
+
 // Soft-thresholding function, returns scalar
 // [[Rcpp::export]]
 double soft_c(double a, double lambda){
