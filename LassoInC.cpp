@@ -85,8 +85,25 @@ static void cd_solve_precomp_c(const arma::mat& Xtilde, arma::colvec& r, arma::c
 // Lasso coordinate-descent on standardized data with one lamdba. Returns a vector beta.
 // [[Rcpp::export]]
 arma::colvec fitLASSOstandardized_c(const arma::mat& Xtilde, const arma::colvec& Ytilde, double lambda, const arma::colvec& beta_start, double eps = 0.001){
-  return cd_one_lambda_scaled(Xtilde, Ytilde, lambda, beta_start, eps);
-}  
+  const arma::uword p = Xtilde.n_cols;
+  const arma::uword n = Xtilde.n_rows;
+  const double invn = 1.0 / static_cast<double>(n);
+  
+  arma::colvec beta = beta_start;
+  arma::colvec r = Ytilde - Xtilde * beta;          // safe even if beta=0
+  arma::rowvec z = arma::sum(arma::square(Xtilde), 0) * invn;
+
+  // cache column pointers
+  std::vector<const double*> colptrs(p);
+  for (arma::uword j = 0; j < p; ++j) colptrs[j] = Xtilde.colptr(j);
+
+  // active = all features for single-λ
+  std::vector<arma::uword> active(p);
+  for (arma::uword j = 0; j < p; ++j) active[j] = j;
+
+  cd_solve_precomp_c(Xtilde, r, beta, z, colptrs, active, lambda, eps);
+  return beta;
+}
 
 // helper function analog to .cd_solve_precomp (from LassoFunctions.R)
 static void cd_solve_precomp_c(const arma::mat& Xtilde, arma::colvec& r, arma::colvec& beta, const arma::rowvec& z,
