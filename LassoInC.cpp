@@ -73,6 +73,47 @@ arma::colvec fitLASSOstandardized_c(const arma::mat& Xtilde, const arma::colvec&
   return cd_one_lambda_scaled(Xtilde, Ytilde, lambda, beta_start, eps);
 }  
 
+// helper function analog to .cd_solve_precomp (from LassoFunctions.R)
+static void cd_solve_precomp_c(const arma::mat& Xtilde, arma::colvec& r, arma::colvec& beta, const arma::rowvec& z,
+                               const std::vector<arma::uword>& active, const double lambda, const double eps){
+  
+  if (active.empty()) return;
+
+  const int max_iter = 100000;
+  const double n = static_cast<double>(Xtilde.n_rows);
+
+  for (int it = 0; it < max_iter; ++it) {
+    double max_change = 0.0;
+  
+    for (arma::uword t = 0; t < active.size(); ++t) {
+      const arma::uword j = active[t];
+      const double zj = z[j];
+      if (zj == 0.0) continue;
+    
+      const double bj_old = beta[j];
+      const arma::colvec xj = Xtilde.col(j);
+    
+      // readd old contribution
+      r += xj * bj_old;
+    
+      // rho_j = (1/n) x_j^T r
+      const double rho = arma::dot(xj, r) / n;
+    
+      // soft-threshold update
+      const double bj_new = soft_c(rho, lambda) / zj;
+    
+      // remove new contribution and store
+      r -= xj * bj_new;
+      beta[j] = bj_new;
+    
+      const double d = std::abs(bj_new - bj_old);
+      if (d > max_change) max_change = d;
+    }
+    
+    if (max_change < eps) break;
+  }
+}
+
 // Lasso coordinate-descent on standardized data with supplied lambda_seq. 
 // You can assume that the supplied lambda_seq is already sorted from largest to smallest, and has no negative values.
 // Returns a matrix beta (p by number of lambdas in the sequence)
