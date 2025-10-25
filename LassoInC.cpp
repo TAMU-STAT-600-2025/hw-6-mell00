@@ -5,7 +5,9 @@ using namespace Rcpp;
 // Soft-thresholding function, returns scalar
 // [[Rcpp::export]]
 double soft_c(double a, double lambda){
-  // Your function code goes here
+  if (a >  lambda) return a - lambda;
+  if (a < -lambda) return a + lambda;
+  return 0.0;
 }
 
 // Lasso objective function, returns scalar
