@@ -13,6 +13,12 @@ set.seed(123)
 cat("\n=== Begin Tests (LASSO C++) ===\n")
 n_ok <- 0L
 
+# Small standardization helper for R
+std_xy <- function(X, Y) {
+  s <- standardizeXY(X, Y)
+  list(X = s$Xtilde, Y = s$Ytilde)
+}
+
 # Do at least 2 tests for soft-thresholding function below. You are checking output agreements on at least 2 separate inputs
 #################################################
 
