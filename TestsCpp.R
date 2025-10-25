@@ -9,6 +9,10 @@ sourceCpp("LassoInC.cpp")
 # Source your LASSO functions from HW4 (make sure to move the corresponding .R file in the current project folder)
 source("LassoFunctions.R")
 
+set.seed(123)
+cat("\n=== Begin Tests (LASSO C++) ===\n")
+n_ok <- 0L
+
 # Do at least 2 tests for soft-thresholding function below. You are checking output agreements on at least 2 separate inputs
 #################################################
 
