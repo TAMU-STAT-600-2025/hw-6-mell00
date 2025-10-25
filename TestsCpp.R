@@ -22,6 +22,17 @@ std_xy <- function(X, Y) {
 # Do at least 2 tests for soft-thresholding function below. You are checking output agreements on at least 2 separate inputs
 #################################################
 
+{
+  test_name <- "soft_c matches soft (mixed signs, lambda = 1.2)"
+  a <- c(-3, -0.5, 0, 0.5, 3)
+  lam <- 1.2
+  r_out <- sapply(a, soft, lambda = lam)
+  c_out <- sapply(a, soft_c, lambda = lam)
+  if (!isTRUE(all.equal(r_out, c_out, tolerance = 1e-12)))
+    stop(test_name, " (mismatch)")
+  n_ok <- n_ok + 1L
+  cat("TEST PASSED: ", test_name, "\n")
+}
 
 # Do at least 2 tests for lasso objective function below. You are checking output agreements on at least 2 separate inputs
 #################################################
