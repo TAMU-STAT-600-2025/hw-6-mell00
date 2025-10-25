@@ -78,5 +78,15 @@ arma::colvec fitLASSOstandardized_c(const arma::mat& Xtilde, const arma::colvec&
 // Returns a matrix beta (p by number of lambdas in the sequence)
 // [[Rcpp::export]]
 arma::mat fitLASSOstandardized_seq_c(const arma::mat& Xtilde, const arma::colvec& Ytilde, const arma::colvec& lambda_seq, double eps = 0.001){
-  // Your function code goes here
+  const arma::uword p = Xtilde.n_cols;
+  const arma::uword L = lambda_seq.n_elem;
+  
+  arma::mat betas(p, L);
+  arma::colvec beta = arma::zeros<arma::colvec>(p); // warm start from 0s
+
+  for (arma::uword k = 0; k < L; ++k) {
+    beta = cd_one_lambda_scaled(Xtilde, Ytilde, lambda_seq[k], beta, eps);
+    betas.col(k) = beta;
+  }
+  return betas;
 }
