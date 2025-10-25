@@ -34,6 +34,19 @@ std_xy <- function(X, Y) {
   cat("TEST PASSED: ", test_name, "\n")
 }
 
+{
+  test_name <- "soft_c matches soft (random vector, multiple lambdas)"
+  a <- rnorm(100)
+  for (lam in c(0, 0.01, 2.5, 10)) {
+    r_out <- sapply(a, soft, lambda = lam)
+    c_out <- sapply(a, soft_c, lambda = lam)
+    if (!isTRUE(all.equal(r_out, c_out, tolerance = 1e-12)))
+      stop(test_name, " (lambda = ", lam, ")")
+  }
+  n_ok <- n_ok + 1L
+  cat("TEST PASSED: ", test_name, "\n")
+}
+
 # Do at least 2 tests for lasso objective function below. You are checking output agreements on at least 2 separate inputs
 #################################################
 
