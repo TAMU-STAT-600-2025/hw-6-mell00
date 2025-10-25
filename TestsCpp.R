@@ -112,6 +112,23 @@ std_xy <- function(X, Y) {
 # Do microbenchmark on fitLASSOstandardized vs fitLASSOstandardized_c
 ######################################################################
 
+library(microbenchmark)
+
+cat("\n microbenchmark: fitLASSOstandardized vs fitLASSOstandardized_c \n")
+{
+  n <- 200; p <- 80
+  X <- matrix(rnorm(n * p), n, p); Y <- rnorm(n)
+  s <- std_xy(X, Y); Xs <- s$X; Ys <- s$Y
+  lam <- 0.25; beta0 <- rep(0, p)
+  print(
+    microbenchmark(
+      R_fit = fitLASSOstandardized(Xs, Ys, lam, beta0, eps = 1e-6)$beta,
+      C_fit = fitLASSOstandardized_c(Xs, Ys, lam, beta0, eps = 1e-6),
+      times = 30
+    )
+  )
+}
+
 # Do at least 2 tests for fitLASSOstandardized_seq function below. You are checking output agreements on at least 2 separate inputs
 #################################################
 
