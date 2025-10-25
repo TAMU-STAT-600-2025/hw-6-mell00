@@ -153,6 +153,28 @@ cat("\n microbenchmark: fitLASSOstandardized vs fitLASSOstandardized_c \n")
   cat("TEST PASSED: ", test_name, "\n")
 }
 
+{
+  test_name <- "fitLASSOstandardized_seq_c matches fitLASSOstandardized_seq
+                (12 lambdas AND new dims)"
+  n <- 120; p <- 18
+  X <- matrix(rnorm(n * p), n, p); Y <- rnorm(n)
+  s <- std_xy(X, Y); Xs <- s$X; Ys <- s$Y
+  n_cur <- nrow(Xs)
+  lam_max <- max(abs(drop(crossprod(Xs, Ys))) / n_cur)
+  lam_seq2 <- seq(lam_max, lam_max * 0.2, length.out = 12)
+  
+  r_fit2 <- fitLASSOstandardized_seq(Xs, Ys, lambda_seq = lam_seq2,
+                                     n_lambda = length(lam_seq2), eps = 1e-7)
+  r_mat2 <- r_fit2$beta_mat
+  c_mat2 <- fitLASSOstandardized_seq_c(Xs, Ys, lam_seq2, eps = 1e-7)
+  
+  if (!identical(dim(r_mat2), dim(c_mat2))) stop(test_name, " (dim mismatch)")
+  if (!isTRUE(all.equal(as.numeric(r_mat2), as.numeric(c_mat2), tolerance = 1e-6)))
+    stop(test_name, " (values mismatch)")
+  n_ok <- n_ok + 1L
+  cat("TEST PASSED: ", test_name, "\n")
+}
+
 # Do microbenchmark on fitLASSOstandardized_seq vs fitLASSOstandardized_seq_c
 ######################################################################
 
