@@ -118,16 +118,68 @@ static void cd_solve_precomp_c(const arma::mat& Xtilde, arma::colvec& r, arma::c
 // You can assume that the supplied lambda_seq is already sorted from largest to smallest, and has no negative values.
 // Returns a matrix beta (p by number of lambdas in the sequence)
 // [[Rcpp::export]]
-arma::mat fitLASSOstandardized_seq_c(const arma::mat& Xtilde, const arma::colvec& Ytilde, const arma::colvec& lambda_seq, double eps = 0.001){
+arma::mat fitLASSOstandardized_seq_c(const arma::mat& Xtilde, const arma::colvec& Ytilde, const arma::colvec& lambda_seq,
+                                     double eps = 0.001)
+{
   const arma::uword p = Xtilde.n_cols;
   const arma::uword L = lambda_seq.n_elem;
-  
-  arma::mat betas(p, L);
-  arma::colvec beta = arma::zeros<arma::colvec>(p); // warm start from 0s
+  const double n = static_cast<double>(Xtilde.n_rows);
+  const double kkt_tol = 1e-7;
+
+  arma::mat  beta_mat(p, L); // p x |lambda_seq|
+  arma::colvec beta(p, arma::fill::zeros); // warm start
+  arma::colvec r = Ytilde; // residual at beta = 0
+  arma::rowvec z = arma::sum(arma::square(Xtilde), 0) / n;
+
+  // gradient at current solution (g = (1/n) X^T r)
+  arma::colvec g_prev = (Xtilde.t() * r) / n;
+
+  std::vector<unsigned char> in_active(p, 0);
+  std::vector<arma::uword>   active;
+  active.reserve(std::min<arma::uword>(p, 512));
 
   for (arma::uword k = 0; k < L; ++k) {
-    beta = cd_one_lambda_scaled(Xtilde, Ytilde, lambda_seq[k], beta, eps);
-    betas.col(k) = beta;
+    const double lambda    = lambda_seq[k];
+    const double lambda_pr = (k == 0 ? lambda : lambda_seq[k - 1]);
+    const double strong_thr = std::max(2.0 * lambda - lambda_pr, 0.0); // strong rule
+  
+    // strong set with previous support
+    active.clear();
+    std::fill(in_active.begin(), in_active.end(), 0);
+    for (arma::uword j = 0; j < p; ++j) {
+      if (std::abs(beta[j]) > 0.0 || std::abs(g_prev[j]) >= strong_thr) {
+        in_active[j] = 1;
+        active.push_back(j);
+      }
+    }
+    
+    // solve on active set
+    cd_solve_precomp_c(Xtilde, r, beta, z, active, lambda, eps);
+    
+    // KKT check on complement; pull violators and re-solve if needed
+    while (true) {
+      arma::colvec g = (Xtilde.t() * r) / n; // gradient at current beta
+      bool any_violation = false;
+
+      for (arma::uword j = 0; j < p; ++j) {
+        if (in_active[j]) continue;
+        if (std::abs(g[j]) > lambda + kkt_tol) {
+          in_active[j] = 1;
+          active.push_back(j);
+          any_violation = true;
+        }
+      }
+    
+      if (!any_violation) {
+        g_prev = std::move(g); // cache for next lambda
+        break;
+      }
+      cd_solve_precomp_c(Xtilde, r, beta, z, active, lambda, eps);
+    }
+  
+    beta_mat.col(k) = beta; // store solution at this lambda
+    // r already corresponds to current beta; reused for next step
   }
-  return betas;
+
+  return beta_mat;
 }
